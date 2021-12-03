@@ -29,19 +29,18 @@
 
 package org.tritonus.midi.device.java;
 
-import java.util.Arrays;
-
-import javax.sound.midi.MidiDevice;
-import javax.sound.midi.MidiEvent;
-import javax.sound.midi.MidiMessage;
-import javax.sound.midi.MetaMessage;
-import javax.sound.midi.Sequence;
-import javax.sound.midi.Track;
-import javax.sound.midi.InvalidMidiDataException;
-
 import org.tritonus.share.TDebug;
 import org.tritonus.share.midi.MidiUtils;
 import org.tritonus.share.midi.TSequencer;
+
+import javax.sound.midi.InvalidMidiDataException;
+import javax.sound.midi.MetaMessage;
+import javax.sound.midi.MidiDevice;
+import javax.sound.midi.MidiEvent;
+import javax.sound.midi.MidiMessage;
+import javax.sound.midi.Sequence;
+import javax.sound.midi.Track;
+import java.util.Arrays;
 
 
 /** Sequencer implementation in pure Java.
@@ -89,26 +88,18 @@ implements Runnable
 		The value is initialized in the constructor by reading a
 		system property.
 	 */
-	private long m_lSleepInterval;
+	private final long m_lSleepInterval;
 
 
 
-	public JavaSequencer(MidiDevice.Info info)
+	public JavaSequencer(final MidiDevice.Info info)
 	{
 		super(info,
 			  Arrays.asList(MASTER_SYNC_MODES),
 			  Arrays.asList(SLAVE_SYNC_MODES));
 		if (TDebug.TraceSequencer) { TDebug.out("JavaSequencer.<init>(): begin"); }
-		String strVersion = System.getProperty("java.version");
-		if (strVersion.indexOf("1.4.2") != -1)
-		{
-			setClock(new SunMiscPerfClock());
-		}
-		else
-		{
-			setClock(new SystemCurrentTimeMillisClock());
-		}
-		String strOS = System.getProperty("os.name");
+        setClock(new SystemNanosClock());
+		final String strOS = System.getProperty("os.name");
 		if (strOS.equals("Linux"))
 		{
 			m_lSleepInterval = 0;
@@ -122,7 +113,8 @@ implements Runnable
 
 
 
-	protected void openImpl()
+	@Override
+    protected void openImpl()
 	{
 		if (TDebug.TraceSequencer) { TDebug.out("JavaSequencer.openImpl(): begin"); }
 		m_nPhase = STATE_STOPPED;
@@ -135,7 +127,8 @@ implements Runnable
 
 
 
-	protected void closeImpl()
+	@Override
+    protected void closeImpl()
 	{
 		if (TDebug.TraceSequencer) { TDebug.out("JavaSequencer.closeImpl(): begin"); }
 		stop();
@@ -143,7 +136,7 @@ implements Runnable
 		synchronized (this)
 		{
 			m_nPhase = STATE_CLOSING; // ask end of thread
-			this.notifyAll();
+            notifyAll();
 		}
 		// now the thread should terminate
 		m_thread = null;
@@ -152,7 +145,8 @@ implements Runnable
 
 
 
-	protected void startImpl()
+	@Override
+    protected void startImpl()
 	{
 		if (TDebug.TraceSequencer) { TDebug.out("JavaSequencer.startImpl(): begin"); }
 		synchronized (this)
@@ -161,13 +155,13 @@ implements Runnable
 			{
 				// unlock thread waiting for start
 				m_nPhase = STATE_STARTING;  // ask for start
-				this.notifyAll();
+                notifyAll();
 				// wait until m_lStartTime is set
 				while (m_nPhase == STATE_STARTING)
 				{
 					try {
-						this.wait();
-					} catch (InterruptedException e) {
+                        wait();
+					} catch (final InterruptedException e) {
 						if (TDebug.TraceAllExceptions) { TDebug.out(e); }
 					}
 				}
@@ -178,7 +172,8 @@ implements Runnable
 
 
 
-	protected void stopImpl()
+	@Override
+    protected void stopImpl()
 	{
 		if (TDebug.TraceSequencer) { TDebug.out("JavaSequencer.stopImpl(): begin"); }
 		synchronized (this)
@@ -200,11 +195,11 @@ implements Runnable
 					while (m_nPhase == STATE_STOPPING)
 					{
 						try {
-							this.wait();
-						} catch (InterruptedException e) {
+                            wait();
+						} catch (final InterruptedException e) {
 							if (TDebug.TraceAllExceptions) { TDebug.out(e); }
 						}
-					}		
+					}
 				}
 			}
 		}
@@ -213,7 +208,8 @@ implements Runnable
 
 
 
-	public void run()
+	@Override
+    public void run()
 	{
 		if (TDebug.TraceSequencer) { TDebug.out("JavaSequencer.run(): begin"); }
 		while (true)
@@ -225,30 +221,30 @@ implements Runnable
 					if (TDebug.TraceSequencer) { TDebug.out("JavaSequencer.run(): waiting to become running"); }
 					try
 					{
-						this.wait();
+                        wait();
 					}
-					catch (InterruptedException e)
+					catch (final InterruptedException e)
 					{
 						if (TDebug.TraceAllExceptions) { TDebug.out(e); }
 					}
 				}
 				if (m_nPhase == STATE_CLOSING) {
 					if (TDebug.TraceSequencer) { TDebug.out("JavaSequencer.run(): end"); }
-					return; 
+					return;
 				}
 				if (TDebug.TraceSequencer) { TDebug.out("JavaSequencer.run(): now running"); }
 				//NOTE: all time calculations are done in microseconds
 				m_lStartTime = getTimeInMicroseconds() - m_lTickPosition * m_lMicroSecondsPerTick;
 				m_nPhase = STATE_STARTED;
-				this.notifyAll();
+                notifyAll();
 			}
-			Sequence sequence = getSequence();
+			final Sequence sequence = getSequence();
 			if (sequence == null)
 			{
 				stop();
 				continue;
 			}
-			Track[]	aTracks = sequence.getTracks();
+			final Track[]	aTracks = sequence.getTracks();
 			// this is used to get a useful time value for the end of track message
 			//long	lHighestTime = 0;
 			while (m_nPhase == STATE_STARTED)
@@ -265,8 +261,8 @@ implements Runnable
 						&& isTrackEnabled(nTrack))
 					{
 						bTrackPresent = true;
-						MidiEvent	event = aTracks[nTrack].get(m_anTrackPositions[nTrack]);
-						long		lTick = event.getTick();
+						final MidiEvent	event = aTracks[nTrack].get(m_anTrackPositions[nTrack]);
+						final long		lTick = event.getTick();
 						if (lTick < lBestTick)
 						{
 							lBestTick = lTick;
@@ -276,12 +272,12 @@ implements Runnable
 				}
 				if (!bTrackPresent)
 				{
-					MetaMessage	metaMessage = new MetaMessage();
+					final MetaMessage	metaMessage = new MetaMessage();
 					try
 					{
 						metaMessage.setMessage(0x2F, new byte[0], 0);
 					}
-					catch (InvalidMidiDataException e)
+					catch (final InvalidMidiDataException e)
 					{
 						if (TDebug.TraceAllExceptions) { TDebug.out(e); }
 					}
@@ -291,9 +287,9 @@ implements Runnable
 					stop();
 					break;
 				}
-				MidiEvent	event = aTracks[nBestTrack].get(m_anTrackPositions[nBestTrack]);
-				MidiMessage	message = event.getMessage();
-				long		lTick = event.getTick();
+				final MidiEvent	event = aTracks[nBestTrack].get(m_anTrackPositions[nBestTrack]);
+				final MidiMessage	message = event.getMessage();
+				final long		lTick = event.getTick();
 				if (message instanceof MetaMessage && ((MetaMessage) message).getType() == 0x2F)
 				{
 					if (TDebug.TraceSequencer) { TDebug.out("JavaSequencer.run(): ignoring End of Track message with tick " + lTick); }
@@ -332,7 +328,7 @@ implements Runnable
 		@param lScheduledTick when to deliver the message in ticks
 		@return true if the event was sent, false otherwise
 	 */
-	private boolean deliverEvent(MidiMessage message, long lScheduledTick)
+	private boolean deliverEvent(final MidiMessage message, final long lScheduledTick)
 	{
 		if (TDebug.TraceSequencer) { TDebug.out("JavaSequencer.deliverEvent(): begin"); }
 		long lScheduledTime;
@@ -343,8 +339,9 @@ implements Runnable
 		// wait for scheduled time
 		while (getTimeInMicroseconds() < lScheduledTime)
 		{
-			if (m_nPhase != STATE_STARTED)
-				return false;
+			if (m_nPhase != STATE_STARTED) {
+                return false;
+            }
 			if (m_bTempoChanged) {
 				synchronized(this) {
 					lScheduledTime = lScheduledTick * m_lMicroSecondsPerTick + m_lStartTime;
@@ -355,7 +352,7 @@ implements Runnable
 			{
 				Thread.sleep(m_lSleepInterval);
 			}
-			catch (InterruptedException e)
+			catch (final InterruptedException e)
 			{
 				if (TDebug.TraceAllExceptions) { TDebug.out(e); }
 			}
@@ -364,13 +361,13 @@ implements Runnable
 		// send midi message
 		if (message instanceof MetaMessage)
 		{
-			MetaMessage	metaMessage = (MetaMessage) message;
+			final MetaMessage	metaMessage = (MetaMessage) message;
 			if (metaMessage.getType() == 0x51)	// set tempo
 			{
-				byte[]	abData = metaMessage.getData();
-				int	nTempo = MidiUtils.getUnsignedInteger(abData[0]) * 65536 +
+				final byte[]	abData = metaMessage.getData();
+				final int	nTempo = MidiUtils.getUnsignedInteger(abData[0]) * 65536 +
 					MidiUtils.getUnsignedInteger(abData[1]) * 256 +
-					MidiUtils.getUnsignedInteger(abData[2]);
+                                      MidiUtils.getUnsignedInteger(abData[2]);
 				// TDebug.out("tempo (us/quarter note): " + nTempo);
 				setTempoInMPQ(nTempo);
 				// TODO: setTempoInMPQ() seems to be not thread-safe
@@ -389,24 +386,27 @@ implements Runnable
 
 
 
-	protected void setMasterSyncModeImpl(SyncMode syncMode)
+	@Override
+    protected void setMasterSyncModeImpl(final SyncMode syncMode)
 	{
 		// DO NOTHING
 	}
 
 
 
-	protected void setSlaveSyncModeImpl(SyncMode syncMode)
+	@Override
+    protected void setSlaveSyncModeImpl(final SyncMode syncMode)
 	{
 		// DO NOTHING
 	}
 
 
 
-	public void setSequence(Sequence sequence)
+	@Override
+    public void setSequence(final Sequence sequence)
 		throws InvalidMidiDataException
 	{
-		boolean bWasRunning = isRunning();
+		final boolean bWasRunning = isRunning();
 		if (bWasRunning)
 		{
 			stop();
@@ -416,7 +416,7 @@ implements Runnable
 		m_anTrackPositions = new int[sequence.getTracks().length];
 		for (int i = 0; i < m_anTrackPositions.length; i++)
 		{
-			m_anTrackPositions[i] = 0;	
+			m_anTrackPositions[i] = 0;
 		}
 		if (bWasRunning)
 		{
@@ -426,22 +426,25 @@ implements Runnable
 
 
 
-	public void setMicrosecondPosition(long lPosition)
+	@Override
+    public void setMicrosecondPosition(final long lPosition)
 	{
 		setTickPosition(lPosition / m_lMicroSecondsPerTick);
 	}
 
 
 
-	public void setTickPosition(long lPosition)
+	@Override
+    public void setTickPosition(final long lPosition)
 	{
 		if (getSequence() == null || m_anTrackPositions == null)
 		{
 			return;
 		}
-		boolean bWasRunning = isRunning();
-		if (bWasRunning)
-			stop();
+		final boolean bWasRunning = isRunning();
+		if (bWasRunning) {
+            stop();
+        }
 		if (lPosition > getSequence().getTickLength())
 		{
 			m_lTickPosition = getSequence().getTickLength();
@@ -454,13 +457,15 @@ implements Runnable
 		{
 			m_anTrackPositions[i] = getTrackPosition(getSequence().getTracks()[i], lPosition);
 		}
-		if (bWasRunning)
-			start();
+		if (bWasRunning) {
+            start();
+        }
 	}
 
 
 
-	public synchronized long getTickPosition()
+	@Override
+    public synchronized long getTickPosition()
 	{
 		if (m_nPhase == STATE_STARTED) {
 			return Math.max(m_lTickPosition, (getTimeInMicroseconds() - m_lStartTime) / m_lMicroSecondsPerTick);
@@ -471,53 +476,60 @@ implements Runnable
 
 
 
-	public void recordDisable(Track track)
+	@Override
+    public void recordDisable(final Track track)
 	{
 	}
 
 
 
-	public void recordEnable(Track track)
+	public void recordEnable(final Track track)
 	{
 	}
 
 
 
-	public void recordEnable(Track track, int nChannel)
+	@Override
+    public void recordEnable(final Track track, final int nChannel)
 	{
 	}
 
 
 
-	public boolean isRecording()
+	@Override
+    public boolean isRecording()
 	{
 		return false;
 	}
 
 
 
-	public void stopRecording()
+	@Override
+    public void stopRecording()
 	{
 		checkOpen();
 	}
 
 
 
-	public void startRecording()
+	@Override
+    public void startRecording()
 	{
 		checkOpen();
 	}
 
 
 
-	protected synchronized void setTempoImpl(float fMPQ)
+	@Override
+    protected synchronized void setTempoImpl(final float fMPQ)
 	{
 		if (TDebug.TraceSequencer) { TDebug.out("JavaSequencer.setTempoImpl(): begin"); }
-		int	nResolution = getResolution();
-		long currentTime = getTimeInMicroseconds();
+		final int	nResolution = getResolution();
+		final long currentTime = getTimeInMicroseconds();
 		long currentTickPosition = 0;
-		if (m_lMicroSecondsPerTick!= 0) 
-			currentTickPosition = (currentTime - m_lStartTime) / m_lMicroSecondsPerTick;
+		if (m_lMicroSecondsPerTick!= 0) {
+            currentTickPosition = (currentTime - m_lStartTime) / m_lMicroSecondsPerTick;
+        }
 		m_lMicroSecondsPerTick = (long) fMPQ / nResolution;
 		m_lStartTime = currentTime - currentTickPosition * m_lMicroSecondsPerTick;
 		m_bTempoChanged = true;
@@ -530,25 +542,30 @@ implements Runnable
 
 	/** Obtain the index of the event with the closest tick value.
 	 */
-	private int getTrackPosition(Track track, long tickPosition) {
+	private int getTrackPosition(final Track track, final long tickPosition) {
 		// check params
-		if (track.size() == 0 || tickPosition <= track.get(0).getTick())
-			return 0;
-		if (tickPosition > track.get(track.size()-1).getTick())
-			return track.size(); // index out of track
+		if (track.size() == 0 || tickPosition <= track.get(0).getTick()) {
+            return 0;
+        }
+		if (tickPosition > track.get(track.size()-1).getTick()) {
+            return track.size(); // index out of track
+        }
 
 		// quick search
 		int idx1 = 0;
 		int idx2 = track.size() - 1;
 		for (;;)
 		{
-			if ((idx2 - idx1) == 1)
-				return idx1;
-			int idx3 = (int)(((long)idx1 + (long)idx2) / 2L);
-			if (tickPosition > track.get(idx3).getTick())
-				idx1 = idx3;
-			else
-				idx2 = idx3;
+			if ((idx2 - idx1) == 1) {
+                return idx1;
+            }
+			final int idx3 = (int)(((long)idx1 + (long)idx2) / 2L);
+			if (tickPosition > track.get(idx3).getTick()) {
+                idx1 = idx3;
+            }
+            else {
+                idx2 = idx3;
+            }
 		}
 	}
 
@@ -575,7 +592,7 @@ implements Runnable
 		@param clock the Clock to be used
 		@throws IllegalStateException if the sequencer is not closed
 	 */
-	public void setClock(Clock clock)
+	public void setClock(final Clock clock)
 	{
 		if (isOpen())
 		{
