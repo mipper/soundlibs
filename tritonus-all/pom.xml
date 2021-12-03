@@ -11,12 +11,12 @@
     <version>0.3.7-SNAPSHOT</version>
     <name>tritonus-all</name>
     <description>Complete tritonus package with all plugins</description>
-    
+
     <developers>
         <developer>
             <name>Florian Bomers</name>
             <organizationUrl>http://tritonus.org</organizationUrl>
-            <roles><role>Original Author</role></roles>            
+            <roles><role>Original Author</role></roles>
             <url>http://www.bomers.de</url>
          </developer>
         <developer>
@@ -26,17 +26,22 @@
             <roles>
                 <role>Packager</role>
             </roles>
-       </developer>         
+       </developer>
     </developers>
-    
+
     <dependencies>
+        <dependency>
+            <groupId>com.googlecode.soundlibs</groupId>
+            <artifactId>tritonus-share</artifactId>
+            <version>0.3.7-SNAPSHOT</version>
+        </dependency>
         <dependency>
             <groupId>com.googlecode.soundlibs</groupId>
             <artifactId>jorbis</artifactId>
             <version>0.0.17.4</version>
         </dependency>
     </dependencies>
-      
+
     <build>
         <resources>
             <resource>
