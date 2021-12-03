@@ -19,7 +19,7 @@
             <organizationUrl>http://www.javazoom.net/javalayer/about.html</organizationUrl>
             <roles>
                 <role>Original Author</role>
-            </roles>            
+            </roles>
             <url>http://www.javazoom.net/javalayer/javalayer.html</url>
         </developer>
         <developer>
@@ -29,9 +29,9 @@
             <roles>
                 <role>Packager</role>
             </roles>
-       </developer>        
+       </developer>
     </developers>
-      
+
     <build>
         <sourceDirectory>src</sourceDirectory>
         <resources>
@@ -42,7 +42,7 @@
             </resource>
         </resources>
     </build>
-    
+
     <dependencies>
         <dependency>
             <groupId>junit</groupId>
@@ -50,7 +50,7 @@
             <version>4.13.2</version>
         </dependency>
     </dependencies>
-  
+
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
