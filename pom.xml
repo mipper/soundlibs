@@ -18,8 +18,8 @@
     </description>
 
     <properties>
-        <maven.compiler.source>1.7</maven.compiler.source>
-        <maven.compiler.target>1.7</maven.compiler.target>
+        <maven.compiler.source>11</maven.compiler.source>
+        <maven.compiler.target>11</maven.compiler.target>
     </properties>
 
     <url>https://code.google.com/p/soundlibs/</url>
@@ -106,15 +106,15 @@
             <plugins>
                 <plugin>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>2.3.2</version>
+                    <version>3.8.1</version>
                 </plugin>
                 <plugin>
                     <artifactId>maven-source-plugin</artifactId>
-                    <version>2.1.2</version>
+                    <version>3.2.1</version>
                 </plugin>
                 <plugin>
                     <artifactId>maven-javadoc-plugin</artifactId>
-                    <version>2.8.1</version>
+                    <version>3.2.0</version>
                     <configuration>
                         <links>
                             <link>http://wiki.soundlibs.googlecode.com/hg/tritonus-share/apidocs</link>
@@ -128,14 +128,14 @@
                 <plugin>
                     <groupId>org.apache.felix</groupId>
                     <artifactId>maven-bundle-plugin</artifactId>
-                    <version>3.0.1</version>
+                    <version>5.1.1</version>
                     <inherited>true</inherited>
                     <extensions>true</extensions>
                 </plugin>
                 <plugin>
                     <groupId>com.github.danielflower.mavenplugins</groupId>
                     <artifactId>multi-module-maven-release-plugin</artifactId>
-                    <version>2.0-SNAPSHOT</version>
+                    <version>3.5.8</version>
                     <!-- Using SNAPSHOT for this release, as I applied pull requests #34 and #35.
                     https://github.com/danielflower/multi-module-maven-release-plugin/pulls?q=is%3Apr%20author%3Apdudits
                     -->
@@ -150,16 +150,19 @@
                         <pushTags>false</pushTags>
                     </configuration>
                 </plugin>
+                <plugin>
+                    <artifactId>maven-release-plugin</artifactId>
+                    <version>2.5.3</version>
+                    <configuration>
+                        <pushChanges>false</pushChanges>
+                        <localCheckout>true</localCheckout>
+                    </configuration>
+                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
             <plugin>
                 <artifactId>maven-release-plugin</artifactId>
-                <version>2.5.3</version>
-                <configuration>
-                    <pushChanges>false</pushChanges>
-                    <localCheckout>true</localCheckout>
-                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.felix</groupId>
@@ -176,7 +179,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
-                        <version>1.6</version>
+                        <version>3.0.1</version>
                         <executions>
                             <execution>
                                 <id>sign-artifacts</id>
