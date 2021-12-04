@@ -1,8 +1,8 @@
 /*
  *   VorbisAudioFileReader.
- * 
+ *
  *   JavaZOOM : vorbisspi@javazoom.net
- *              http://www.javazoom.net 
+ *              http://www.javazoom.net
  *
  *   This program is free software; you can redistribute it and/or modify
  *   it under the terms of the GNU Library General Public License as published
@@ -19,9 +19,25 @@
  *   Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  */
- 
+
 package javazoom.spi.vorbis.sampled.file;
 
+import com.jcraft.jogg.Packet;
+import com.jcraft.jogg.Page;
+import com.jcraft.jogg.StreamState;
+import com.jcraft.jogg.SyncState;
+import com.jcraft.jorbis.Comment;
+import com.jcraft.jorbis.Info;
+import com.jcraft.jorbis.JOrbisException;
+import com.jcraft.jorbis.VorbisFile;
+import org.slf4j.Logger;
+import org.tritonus.share.sampled.file.TAudioFileReader;
+
+import javax.sound.sampled.AudioFileFormat;
+import javax.sound.sampled.AudioFormat;
+import javax.sound.sampled.AudioInputStream;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.UnsupportedAudioFileException;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -29,27 +45,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.net.URL;
 import java.util.HashMap;
+import java.util.Map;
 import java.util.StringTokenizer;
 
-import javax.sound.sampled.AudioFileFormat;
-import javax.sound.sampled.AudioFormat;
-import javax.sound.sampled.AudioInputStream;
-import javax.sound.sampled.AudioSystem;
-import javax.sound.sampled.UnsupportedAudioFileException;
-
-import org.tritonus.share.TDebug;
-import org.tritonus.share.sampled.file.TAudioFileReader;
-
-import com.jcraft.jogg.Packet;
-import com.jcraft.jogg.Page;
-import com.jcraft.jogg.StreamState;
-import com.jcraft.jogg.SyncState;
-import com.jcraft.jorbis.Block;
-import com.jcraft.jorbis.Comment;
-import com.jcraft.jorbis.DspState;
-import com.jcraft.jorbis.Info;
-import com.jcraft.jorbis.JOrbisException;
-import com.jcraft.jorbis.VorbisFile;
+import static org.slf4j.LoggerFactory.getLogger;
 
 /**
  * This class implements the AudioFileReader class and provides an
@@ -57,452 +56,424 @@ import com.jcraft.jorbis.VorbisFile;
  */
 public class VorbisAudioFileReader extends TAudioFileReader
 {
-  private SyncState oggSyncState_ = null;
-  private StreamState oggStreamState_ = null;
-  private Page oggPage_ = null;
-  private Packet oggPacket_ = null;
-  private Info vorbisInfo = null;
-  private Comment vorbisComment = null;
-  private DspState vorbisDspState = null;
-  private Block vorbisBlock = null;
-  private int bufferMultiple_ = 4;
-  private int bufferSize_ = bufferMultiple_ * 256 * 2;
-  private byte[] buffer = null;
-  private int bytes = 0;
 
-  private int index = 0;
-  private InputStream oggBitStream_ = null;
+    private static final Logger _logger = getLogger(VorbisAudioFileReader.class);
+    private static final int BUFFER_SIZE = 4 * 256 * 2;
+    private static final int INITIAL_READ_LENGTH = 64000;
+    private static final int MARK_LIMIT = INITIAL_READ_LENGTH + 1;
 
-  private static final int	INITAL_READ_LENGTH = 64000;
-  private static final int	MARK_LIMIT = INITAL_READ_LENGTH + 1;
-  
-  public VorbisAudioFileReader()
-  {
-	  super(MARK_LIMIT, true);
-  }
+    private SyncState _syncState;
+    private StreamState _streamState;
+    private Page _page;
+    private Packet _packet;
+    private Info _vorbisInfo;
+    private Comment _comment;
+    private int _bytes;
+    private InputStream _oggBitStream;
 
-  /**
-   * Return the AudioFileFormat from the given file.
-   */
-  public AudioFileFormat getAudioFileFormat(File file) throws UnsupportedAudioFileException, IOException
-  {
-	if (TDebug.TraceAudioFileReader) TDebug.out("getAudioFileFormat(File file)");
-    InputStream inputStream = null;
-    try
-    {	  
-	  inputStream = new BufferedInputStream(new FileInputStream(file));	
-	  inputStream.mark(MARK_LIMIT);	    
-	  AudioFileFormat aff = getAudioFileFormat(inputStream);
-	  inputStream.reset();
-      // Get Vorbis file info such as length in seconds.
-      VorbisFile vf = new VorbisFile(file.getAbsolutePath());      
-      return getAudioFileFormat(inputStream,(int) file.length(), (int) Math.round((vf.time_total(-1))*1000));
-    }
-	catch (JOrbisException e)
-	{
-		throw new IOException(e.getMessage());
-	}
-   finally
-   {
-     if (inputStream != null) inputStream.close();
-   }
-  }
 
-  /**
-   * Return the AudioFileFormat from the given URL.
-   */
-  public AudioFileFormat getAudioFileFormat(URL url) throws UnsupportedAudioFileException, IOException
-  {
-	if (TDebug.TraceAudioFileReader) TDebug.out("getAudioFileFormat(URL url)");
-    InputStream inputStream = url.openStream();
-    try
+    public VorbisAudioFileReader()
     {
-      return getAudioFileFormat(inputStream);
-    }
-    finally
-    {
-		if (inputStream != null) inputStream.close();
-    }
-  }
-
-  /**
-   * Return the AudioFileFormat from the given InputStream.
-   */
-  public AudioFileFormat getAudioFileFormat(InputStream inputStream) throws UnsupportedAudioFileException, IOException
-  {
-	if (TDebug.TraceAudioFileReader) TDebug.out("getAudioFileFormat(InputStream inputStream)");
-	try
-	{
-		if (!inputStream.markSupported()) inputStream = new BufferedInputStream(inputStream);
-		inputStream.mark(MARK_LIMIT);
-		return getAudioFileFormat(inputStream, AudioSystem.NOT_SPECIFIED, AudioSystem.NOT_SPECIFIED);
-	}
-	finally
-	{
-		inputStream.reset();
-	}    
-  }
-
-  /**
-   * Return the AudioFileFormat from the given InputStream and length in bytes.
-   */
-  public AudioFileFormat getAudioFileFormat(InputStream inputStream, long medialength) throws UnsupportedAudioFileException, IOException
-  {
-	return getAudioFileFormat(inputStream, (int) medialength, AudioSystem.NOT_SPECIFIED);
-  }
-
-  
-  /**
-   * Return the AudioFileFormat from the given InputStream, length in bytes and length in milliseconds.
-   */
-  protected AudioFileFormat getAudioFileFormat(InputStream bitStream, int mediaLength, int totalms) throws UnsupportedAudioFileException, IOException
-  {
-	HashMap aff_properties = new HashMap();
-	HashMap af_properties = new HashMap();
-    if (totalms == AudioSystem.NOT_SPECIFIED)
-    {
-      totalms = 0;
-    }
-    if (totalms <= 0)
-    {
-      totalms = 0;
-    }
-    else
-    {
-		aff_properties.put("duration",new Long(totalms*1000));    	
-    }
-    oggBitStream_ = bitStream;
-    init_jorbis();
-    index = 0;
-    try
-    {
-      readHeaders(aff_properties, af_properties);
-    }
-    catch (IOException ioe)
-    {
-      if (TDebug.TraceAudioFileReader)
-      {
-		TDebug.out(ioe.getMessage());
-      }
-      throw new UnsupportedAudioFileException(ioe.getMessage());
+        super(MARK_LIMIT, true);
     }
 
-    String dmp = vorbisInfo.toString();
-    if (TDebug.TraceAudioFileReader)
+    /**
+     * Return the AudioFileFormat from the given file.
+     */
+    @Override
+    public AudioFileFormat getAudioFileFormat(final File file) throws UnsupportedAudioFileException, IOException
     {
-		TDebug.out(dmp);
+        InputStream inputStream = null;
+        try
+        {
+            inputStream = new BufferedInputStream(new FileInputStream(file));
+            inputStream.mark(MARK_LIMIT);
+            final AudioFileFormat aff = getAudioFileFormat(inputStream);
+            inputStream.reset();
+            // Get Vorbis file info such as length in seconds.
+            final VorbisFile vf = new VorbisFile(file.getAbsolutePath());
+            return getAudioFileFormat(inputStream,(int) file.length(), (int) Math.round((vf.time_total(-1))*1000));
+        }
+        catch (final JOrbisException e)
+        {
+            throw new IOException(e.getMessage(), e);
+        }
+        finally
+        {
+            if (inputStream != null) {
+                inputStream.close();
+            }
+        }
     }
-    int ind = dmp.lastIndexOf("bitrate:");    
-    int minbitrate = -1;
-	int nominalbitrate = -1;
-	int maxbitrate = -1;
-    if (ind != -1)
-    {
-      dmp = dmp.substring(ind + 8, dmp.length());
-      StringTokenizer st = new StringTokenizer(dmp, ",");
-	  if (st.hasMoreTokens())
-	  {
-		minbitrate = Integer.parseInt(st.nextToken());
-	  }
-	  if (st.hasMoreTokens())
-	  {
-		nominalbitrate = Integer.parseInt(st.nextToken());
-	  }
-	  if (st.hasMoreTokens())
-	  {
-		maxbitrate = Integer.parseInt(st.nextToken());
-	  }
-    }
-	if (nominalbitrate > 0) af_properties.put("bitrate",new Integer(nominalbitrate));
-	af_properties.put("vbr",new Boolean(true));
-	
-	if (minbitrate > 0)  aff_properties.put("ogg.bitrate.min.bps",new Integer(minbitrate));
-	if (maxbitrate > 0)  aff_properties.put("ogg.bitrate.max.bps",new Integer(maxbitrate));
-	if (nominalbitrate > 0) aff_properties.put("ogg.bitrate.nominal.bps",new Integer(nominalbitrate));
-	if (vorbisInfo.channels > 0) aff_properties.put("ogg.channels",new Integer(vorbisInfo.channels));
-	if (vorbisInfo.rate > 0) aff_properties.put("ogg.frequency.hz",new Integer(vorbisInfo.rate));
-	if (mediaLength > 0) aff_properties.put("ogg.length.bytes",new Integer(mediaLength));
-	aff_properties.put("ogg.version",new Integer(vorbisInfo.version));
-	
-    //AudioFormat.Encoding encoding = VorbisEncoding.VORBISENC;
-    //AudioFormat format = new VorbisAudioFormat(encoding, vorbisInfo.rate, AudioSystem.NOT_SPECIFIED, vorbisInfo.channels, AudioSystem.NOT_SPECIFIED, AudioSystem.NOT_SPECIFIED, true,af_properties);
 
-	// Patch from MS to ensure more SPI compatibility ...
-    float frameRate = -1;
-    if (nominalbitrate > 0) frameRate = nominalbitrate / 8;
-    else if (minbitrate > 0) frameRate = minbitrate / 8;
-    
-    AudioFormat.Encoding encoding = VorbisEncoding.VORBISENC;
-    // New Patch from MS:
-    AudioFormat format = new VorbisAudioFormat(encoding, vorbisInfo.rate, AudioSystem.NOT_SPECIFIED, vorbisInfo.channels, 1, frameRate, false, af_properties);
-    // Patch end
-	
-    return new VorbisAudioFileFormat(VorbisFileFormatType.OGG, format, AudioSystem.NOT_SPECIFIED, mediaLength,aff_properties);
-  }
+    /**
+     * Return the AudioFileFormat from the given URL.
+     */
+    @Override
+    public AudioFileFormat getAudioFileFormat(final URL url) throws UnsupportedAudioFileException, IOException
+    {
+        final InputStream inputStream = url.openStream();
+        try
+        {
+            return getAudioFileFormat(inputStream);
+        }
+        finally
+        {
+            if (inputStream != null) {
+                inputStream.close();
+            }
+        }
+    }
 
-  /**
-   * Return the AudioInputStream from the given InputStream.
-   */
-  public AudioInputStream getAudioInputStream(InputStream inputStream) throws UnsupportedAudioFileException, IOException
-  {
-   if (TDebug.TraceAudioFileReader) TDebug.out("getAudioInputStream(InputStream inputStream)");
-   return getAudioInputStream(inputStream, AudioSystem.NOT_SPECIFIED, AudioSystem.NOT_SPECIFIED);
-  }
+    /**
+     * Return the AudioFileFormat from the given InputStream.
+     */
+    @Override
+    public AudioFileFormat getAudioFileFormat(InputStream inputStream) throws UnsupportedAudioFileException, IOException
+    {
+        try
+        {
+            if (!inputStream.markSupported()) {
+                inputStream = new BufferedInputStream(inputStream);
+            }
+            inputStream.mark(MARK_LIMIT);
+            return getAudioFileFormat(inputStream, AudioSystem.NOT_SPECIFIED, AudioSystem.NOT_SPECIFIED);
+        }
+        finally
+        {
+            inputStream.reset();
+        }
+    }
 
-  /**
-   * Return the AudioInputStream from the given InputStream.
-   */
-  public AudioInputStream getAudioInputStream(InputStream inputStream, int medialength, int totalms) throws UnsupportedAudioFileException, IOException
-  {
-	if (TDebug.TraceAudioFileReader) TDebug.out("getAudioInputStream(InputStream inputStreamint medialength, int totalms)");
-	try
-	{		
-		if (!inputStream.markSupported()) inputStream = new BufferedInputStream(inputStream);
-		inputStream.mark(MARK_LIMIT);
-		AudioFileFormat audioFileFormat = getAudioFileFormat(inputStream, medialength, totalms);
-		inputStream.reset();
-		return new AudioInputStream(inputStream, audioFileFormat.getFormat(), audioFileFormat.getFrameLength());
-	}
-	catch (UnsupportedAudioFileException e)
-	{
-		inputStream.reset();
-		throw e;
-	}
-	catch (IOException e)
-	{
-		inputStream.reset();
-		throw e;
-	}
-  }
+    /**
+     * Return the AudioFileFormat from the given InputStream and length in bytes.
+     */
+    @Override
+    public AudioFileFormat getAudioFileFormat(final InputStream inputStream, final long medialength)
+            throws UnsupportedAudioFileException, IOException
+    {
+        return getAudioFileFormat(inputStream, (int) medialength, AudioSystem.NOT_SPECIFIED);
+    }
 
-  /**
-   * Return the AudioInputStream from the given File.
-   */
-  public AudioInputStream getAudioInputStream(File file) throws UnsupportedAudioFileException, IOException
-  {
-	if (TDebug.TraceAudioFileReader) TDebug.out("getAudioInputStream(File file)");
-    InputStream inputStream = new FileInputStream(file);
-    try
-    {
-      return getAudioInputStream(inputStream);
-    }
-    catch (UnsupportedAudioFileException e)
-    {
-	  if (inputStream != null) inputStream.close();
-      throw e;
-    }
-    catch (IOException e)
-    {
-	  if (inputStream != null) inputStream.close();
-      throw e;
-    }
-  }
 
-  /**
-   * Return the AudioInputStream from the given URL.
-   */
-  public AudioInputStream getAudioInputStream(URL url) throws UnsupportedAudioFileException, IOException
-  {
-	if (TDebug.TraceAudioFileReader) TDebug.out("getAudioInputStream(URL url)");
-    InputStream inputStream = url.openStream();
-    try
+    /**
+     * Return the AudioFileFormat from the given InputStream, length in bytes and length in milliseconds.
+     */
+    private AudioFileFormat getAudioFileFormat(final InputStream bitStream, final int mediaLength, final int totalMs)
+            throws UnsupportedAudioFileException, IOException
     {
-      return getAudioInputStream(inputStream);
-    }
-    catch (UnsupportedAudioFileException e)
-    {
-	  if (inputStream != null) inputStream.close();
-      throw e;
-    }
-    catch (IOException e)
-    {
-	  if (inputStream != null) inputStream.close();
-      throw e;
-    }
-  }
+        final Map<String, Object> affProperties = new HashMap<>();
+        final Map<String, Object> afProperties = new HashMap<>();
+        if (totalMs > 0) {
+            affProperties.put("duration", totalMs * 1000L);
+        }
+        _oggBitStream = bitStream;
+        initJorbis();
+        try
+        {
+            readHeaders(affProperties);
+        }
+        catch (final IOException ioe)
+        {
+            _logger.info(ioe.getMessage());
+            throw new UnsupportedAudioFileException(ioe.getMessage());
+        }
 
-  /**
-   * Reads headers and comments.
-   */
-  private void readHeaders(HashMap aff_properties, HashMap af_properties) throws IOException
-  {
-	if(TDebug.TraceAudioConverter) TDebug.out("readHeaders(");
-	index = oggSyncState_.buffer(bufferSize_);
-	buffer = oggSyncState_.data;
-	bytes = readFromStream(buffer, index, bufferSize_);
-	if(bytes == -1)
-	{
-	  if(TDebug.TraceAudioConverter) TDebug.out("Cannot get any data from selected Ogg bitstream.");
-	  throw new IOException("Cannot get any data from selected Ogg bitstream.");
-	}
-	oggSyncState_.wrote(bytes);
-	if(oggSyncState_.pageout(oggPage_) != 1)
-	{
-	  if(bytes < bufferSize_)
-	  {
-		throw new IOException("EOF");
-	  }
-	  if(TDebug.TraceAudioConverter) TDebug.out("Input does not appear to be an Ogg bitstream.");
-	  throw new IOException("Input does not appear to be an Ogg bitstream.");
-	}	
-	oggStreamState_.init(oggPage_.serialno());
-	vorbisInfo.init();
-	vorbisComment.init();
-	aff_properties.put("ogg.serial",new Integer(oggPage_.serialno()));
-	if(oggStreamState_.pagein(oggPage_) < 0)
-	{
-	  // error; stream version mismatch perhaps
-	  if(TDebug.TraceAudioConverter) TDebug.out("Error reading first page of Ogg bitstream data.");
-	  throw new IOException("Error reading first page of Ogg bitstream data.");
-	}
-	if(oggStreamState_.packetout(oggPacket_) != 1)
-	{
-	  // no page? must not be vorbis
-	  if(TDebug.TraceAudioConverter) TDebug.out("Error reading initial header packet.");
-	  throw new IOException("Error reading initial header packet.");
-	}
-	if(vorbisInfo.synthesis_headerin(vorbisComment, oggPacket_) < 0)
-	{
-	  // error case; not a vorbis header
-	  if(TDebug.TraceAudioConverter) TDebug.out("This Ogg bitstream does not contain Vorbis audio data.");
-	  throw new IOException("This Ogg bitstream does not contain Vorbis audio data.");
-	}
-	int i = 0;
-	while(i < 2)
-	{
-	  while(i < 2)
-	  {
-		int result = oggSyncState_.pageout(oggPage_);
-		if(result == 0)
-		{
-		  break;
-		} // Need more data
-		if(result == 1)
-		{
-		  oggStreamState_.pagein(oggPage_);
-		  while(i < 2)
-		  {
-			result = oggStreamState_.packetout(oggPacket_);
-			if(result == 0)
-			{
-			  break;
-			}
-			if(result == -1)
-			{
-			  if(TDebug.TraceAudioConverter) TDebug.out("Corrupt secondary header.  Exiting.");
-			  throw new IOException("Corrupt secondary header.  Exiting.");
-			}
-			vorbisInfo.synthesis_headerin(vorbisComment, oggPacket_);
-			i++;
-		  }
-		}
-	  }
-	  index = oggSyncState_.buffer(bufferSize_);
-	  buffer = oggSyncState_.data;
-	  bytes = readFromStream(buffer, index, bufferSize_);
-	  if(bytes == -1)
-	  {
-		break;
-	  }
-	  if(bytes == 0 && i < 2)
-	  {
-		if(TDebug.TraceAudioConverter) TDebug.out("End of file before finding all Vorbis headers!");
-		throw new IOException("End of file before finding all Vorbis  headers!");
-	  }
-	  oggSyncState_.wrote(bytes);
-	}
-	// Read Ogg Vorbis comments.
-	byte[][] ptr = vorbisComment.user_comments;
-	String currComment = "";
-	int c = 0;
-	for(int j = 0; j < ptr.length; j++)
-	{
-	  if(ptr[j] == null)
-	  {
-		break;
-	  }
-	  currComment = (new String(ptr[j], 0, ptr[j].length - 1,"UTF-8")).trim();
-	  if(TDebug.TraceAudioConverter) TDebug.out(currComment);
-	  if (currComment.toLowerCase().startsWith("artist"))
-	  {
-		aff_properties.put("author",currComment.substring(7));	  	
-	  }
-	  else if (currComment.toLowerCase().startsWith("title"))
-	  {
-		aff_properties.put("title",currComment.substring(6));	  	
-	  }
-	  else if (currComment.toLowerCase().startsWith("album"))
-	  {
-		aff_properties.put("album",currComment.substring(6));	  	
-	  }
-	  else if (currComment.toLowerCase().startsWith("date"))
-	  {
-		aff_properties.put("date",currComment.substring(5));
-	  }
-	  else if (currComment.toLowerCase().startsWith("copyright"))
-	  {
-		aff_properties.put("copyright",currComment.substring(10));	  	
-	  }
-	  else if (currComment.toLowerCase().startsWith("comment"))
-	  {
-		aff_properties.put("comment",currComment.substring(8));
-	  }
-	  else if (currComment.toLowerCase().startsWith("genre"))
-	  {
-		aff_properties.put("ogg.comment.genre",currComment.substring(6));	
-	  }
-	  else if (currComment.toLowerCase().startsWith("tracknumber"))
-	  {
-		aff_properties.put("ogg.comment.track",currComment.substring(12));	
-	  }
-	  else
-	  {
-		c++;
-		aff_properties.put("ogg.comment.ext."+c,currComment);
-	  }
-	  aff_properties.put("ogg.comment.encodedby",new String(vorbisComment.vendor, 0, vorbisComment.vendor.length - 1));
-	}
-  }
+        String dmp = _vorbisInfo.toString();
+        _logger.debug("Vorbis Info: {}", dmp);
+        // TODO: Encapsulate bitrate and framerate
+        final int ind = dmp.lastIndexOf("bitrate:");
+        int minbitrate = -1;
+        int nominalbitrate = -1;
+        if (ind != -1)
+        {
+            dmp = dmp.substring(ind + 8);
+            final StringTokenizer st = new StringTokenizer(dmp, ",");
+            if (st.hasMoreTokens())
+            {
+                minbitrate = Integer.parseInt(st.nextToken());
+                if (minbitrate > 0) {
+                    affProperties.put("ogg.bitrate.min.bps", minbitrate);
+                }
+            }
+            if (st.hasMoreTokens())
+            {
+                nominalbitrate = Integer.parseInt(st.nextToken());
+                if (nominalbitrate > 0) {
+                    afProperties.put("bitrate", nominalbitrate);
+                    affProperties.put("ogg.bitrate.nominal.bps", nominalbitrate);
+                }
+            }
+            if (st.hasMoreTokens())
+            {
+                final int maxbitrate = Integer.parseInt(st.nextToken());
+                if (maxbitrate > 0) {
+                    affProperties.put("ogg.bitrate.max.bps", maxbitrate);
+                }
+            }
+        }
+        afProperties.put("vbr", Boolean.TRUE);
+        if (_vorbisInfo.channels > 0) {
+            affProperties.put("ogg.channels", _vorbisInfo.channels);
+        }
+        if (_vorbisInfo.rate > 0) {
+            affProperties.put("ogg.frequency.hz", _vorbisInfo.rate);
+        }
+        if (mediaLength > 0) {
+            affProperties.put("ogg.length.bytes", mediaLength);
+        }
+        affProperties.put("ogg.version", _vorbisInfo.version);
 
-  /**
-   * Reads from the oggBitStream_ a specified number of Bytes(bufferSize_) worth
-   * starting at index and puts them in the specified buffer[].
-   *
-   * @return the number of bytes read or -1 if error.
-   */
-  private int readFromStream(byte[] buffer, int index, int bufferSize_)
-  {
-    int bytes = 0;
-    try
-    {
-      bytes = oggBitStream_.read(buffer, index, bufferSize_);
-    }
-    catch (Exception e)
-    {
-      if (TDebug.TraceAudioFileReader)
-      {
-        TDebug.out("Cannot Read Selected Song");
-      }
-      bytes = -1;
-    }
-    return bytes;
-  }
+        //AudioFormat.Encoding encoding = VorbisEncoding.VORBISENC;
+        //AudioFormat format = new VorbisAudioFormat(encoding, vorbisInfo.rate, AudioSystem.NOT_SPECIFIED, vorbisInfo.channels, AudioSystem.NOT_SPECIFIED, AudioSystem.NOT_SPECIFIED, true,af_properties);
 
-  /**
-   * Initializes all the jOrbis and jOgg vars that are used for song playback.
-   */
-  private void init_jorbis()
-  {
-    oggSyncState_ = new SyncState();
-    oggStreamState_ = new StreamState();
-    oggPage_ = new Page();
-    oggPacket_ = new Packet();
-    vorbisInfo = new Info();
-    vorbisComment = new Comment();
-    vorbisDspState = new DspState();
-    vorbisBlock = new Block(vorbisDspState);
-    buffer = null;
-    bytes = 0;
-    oggSyncState_.init();
-  }
+        // Patch from MS to ensure more SPI compatibility ...
+        float frameRate = -1;
+        if (nominalbitrate > 0) {
+            frameRate = nominalbitrate / 8.0f;
+        }
+        else if (minbitrate > 0) {
+            frameRate = minbitrate / 8.0f;
+        }
+
+        final AudioFormat format = new VorbisAudioFormat(
+                VorbisEncoding.VORBISENC,
+                _vorbisInfo.rate,
+                AudioSystem.NOT_SPECIFIED,
+                _vorbisInfo.channels,
+                1,
+                frameRate,
+                false,
+                afProperties);
+        return new VorbisAudioFileFormat(VorbisFileFormatType.OGG, format, AudioSystem.NOT_SPECIFIED, mediaLength,affProperties);
+    }
+
+    /**
+     * Return the AudioInputStream from the given InputStream.
+     */
+    @Override
+    public AudioInputStream getAudioInputStream(final InputStream inputStream) throws UnsupportedAudioFileException, IOException
+    {
+        return getAudioInputStream(inputStream, AudioSystem.NOT_SPECIFIED, AudioSystem.NOT_SPECIFIED);
+    }
+
+    /**
+     * Return the AudioInputStream from the given InputStream.
+     */
+    private AudioInputStream getAudioInputStream(InputStream inputStream, final int medialength, final int totalms)
+            throws UnsupportedAudioFileException, IOException
+    {
+        try
+        {
+            if (!inputStream.markSupported()) {
+                inputStream = new BufferedInputStream(inputStream);
+            }
+            inputStream.mark(MARK_LIMIT);
+            final AudioFileFormat audioFileFormat = getAudioFileFormat(inputStream, medialength, totalms);
+            inputStream.reset();
+            return new AudioInputStream(inputStream, audioFileFormat.getFormat(), audioFileFormat.getFrameLength());
+        }
+        catch (final UnsupportedAudioFileException | IOException e)
+        {
+            inputStream.reset();
+            throw e;
+        }
+    }
+
+    /**
+     * Return the AudioInputStream from the given File.
+     */
+    @Override
+    public AudioInputStream getAudioInputStream(final File file) throws UnsupportedAudioFileException, IOException
+    {
+        final InputStream inputStream = new FileInputStream(file);
+        try
+        {
+            return getAudioInputStream(inputStream);
+        }
+        catch (final UnsupportedAudioFileException | IOException e)
+        {
+            inputStream.close();
+            throw e;
+        }
+    }
+
+    /**
+     * Return the AudioInputStream from the given URL.
+     */
+    @Override
+    public AudioInputStream getAudioInputStream(final URL url) throws UnsupportedAudioFileException, IOException
+    {
+        final InputStream inputStream = url.openStream();
+        try
+        {
+            return getAudioInputStream(inputStream);
+        }
+        catch (final UnsupportedAudioFileException | IOException e)
+        {
+            inputStream.close();
+            throw e;
+        }
+    }
+
+    /**
+     * Reads headers and comments.
+     */
+    private void readHeaders(final Map<String, Object> affProperties) throws IOException
+    {
+        int index = _syncState.buffer(BUFFER_SIZE);
+        _bytes = readFromStream(_syncState.data, index, BUFFER_SIZE);
+        if(_bytes == -1)
+        {
+            throw new IOException("Cannot get any data from selected Ogg bitstream.");
+        }
+        _syncState.wrote(_bytes);
+        if(_syncState.pageout(_page) != 1)
+        {
+            if(_bytes < BUFFER_SIZE)
+            {
+                throw new IOException("EOF");
+            }
+            throw new IOException("Input does not appear to be an Ogg bitstream.");
+        }
+        _streamState.init(_page.serialno());
+        _vorbisInfo.init();
+        _comment.init();
+        affProperties.put("ogg.serial", _page.serialno());
+        if(_streamState.pagein(_page) < 0)
+        {
+            // error; stream version mismatch perhaps
+            throw new IOException("Error reading first page of Ogg bitstream data.");
+        }
+        if(_streamState.packetout(_packet) != 1)
+        {
+            // no page? must not be vorbis
+            throw new IOException("Error reading initial header packet.");
+        }
+        if(_vorbisInfo.synthesis_headerin(_comment, _packet) < 0)
+        {
+            // error case; not a vorbis header
+            throw new IOException("This Ogg bitstream does not contain Vorbis audio data.");
+        }
+        int i = 0;
+        while(i < 2)
+        {
+            while(i < 2)
+            {
+                int result = _syncState.pageout(_page);
+                if(result == 0)
+                {
+                    break;
+                } // Need more data
+                if(result == 1)
+                {
+                    _streamState.pagein(_page);
+                    while(i < 2)
+                    {
+                        result = _streamState.packetout(_packet);
+                        if(result == 0)
+                        {
+                            break;
+                        }
+                        if(result == -1)
+                        {
+                            throw new IOException("Corrupt secondary header.  Exiting.");
+                        }
+                        _vorbisInfo.synthesis_headerin(_comment, _packet);
+                        i++;
+                    }
+                }
+            }
+            index = _syncState.buffer(BUFFER_SIZE);
+            _bytes = readFromStream(_syncState.data, index, BUFFER_SIZE);
+            if(_bytes == -1)
+            {
+                break;
+            }
+            if(_bytes == 0 && i < 2)
+            {
+                throw new IOException("End of file before finding all Vorbis  headers!");
+            }
+            _syncState.wrote(_bytes);
+        }
+        // Read Ogg Vorbis comments.
+        final byte[][] ptr = _comment.user_comments;
+        String currComment = "";
+        int c = 0;
+        for (final byte[] bytes : ptr) {
+            if (bytes == null) {
+                break;
+            }
+            currComment = (new String(bytes, 0, bytes.length - 1, "UTF-8")).trim();
+            _logger.debug("Current Comment: {}", currComment);
+            if (tagMatches(currComment, "artist")) {
+                affProperties.put("author", currComment.substring(7));
+            }
+            else if (tagMatches(currComment, "title")) {
+                affProperties.put("title", currComment.substring(6));
+            }
+            else if (tagMatches(currComment, "album")) {
+                affProperties.put("album", currComment.substring(6));
+            }
+            else if (tagMatches(currComment, "date")) {
+                affProperties.put("date", currComment.substring(5));
+            }
+            else if (tagMatches(currComment, "copyright")) {
+                affProperties.put("copyright", currComment.substring(10));
+            }
+            else if (tagMatches(currComment, "comment")) {
+                affProperties.put("comment", currComment.substring(8));
+            }
+            else if (tagMatches(currComment, "genre")) {
+                affProperties.put("ogg.comment.genre", currComment.substring(6));
+            }
+            else if (tagMatches(currComment, "tracknumber")) {
+                affProperties.put("ogg.comment.track", currComment.substring(12));
+            }
+            else {
+                c++;
+                affProperties.put("ogg.comment.ext." + c, currComment);
+            }
+            affProperties.put("ogg.comment.encodedby", new String(_comment.vendor, 0, _comment.vendor.length - 1));
+        }
+    }
+
+    private static boolean tagMatches(final String currComment, final String title) {
+        return currComment.toLowerCase().startsWith(title);
+    }
+
+    /**
+     * Reads from the oggBitStream_ a specified number of Bytes(bufferSize_) worth
+     * starting at index and puts them in the specified buffer[].
+     *
+     * @return the number of bytes read or -1 if error.
+     */
+    private int readFromStream(final byte[] buffer, final int index, final int bufferSize)
+    {
+        try
+        {
+            return _oggBitStream.read(buffer, index, bufferSize);
+        }
+        catch (final RuntimeException | IOException e)
+        {
+            _logger.info("Error reading audio.", e);
+        }
+        return -1;
+    }
+
+    /**
+     * Initializes all the jOrbis and jOgg vars that are used for song playback.
+     */
+    private void initJorbis()
+    {
+        _syncState = new SyncState();
+        _streamState = new StreamState();
+        _page = new Page();
+        _packet = new Packet();
+        _vorbisInfo = new Info();
+        _comment = new Comment();
+        _bytes = 0;
+        _syncState.init();
+    }
+
 }
