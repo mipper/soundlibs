@@ -76,10 +76,6 @@ public class VorbisAudioFileReader extends TAudioFileReader {
         super(MARK_LIMIT, true);
     }
 
-    private static boolean tagMatches(final String currComment, final String title) {
-        return currComment.toLowerCase().startsWith(title);
-    }
-
     /**
      * Return the AudioFileFormat from the given file.
      */
@@ -380,6 +376,9 @@ public class VorbisAudioFileReader extends TAudioFileReader {
             else if (tagMatches(currComment, "title")) {
                 affProperties.put("title", currComment.substring(6));
             }
+            else if (tagMatches(currComment, "albumartist")) {
+                affProperties.put("albumartist", currComment.substring(12));
+            }
             else if (tagMatches(currComment, "album")) {
                 affProperties.put("album", currComment.substring(6));
             }
@@ -404,6 +403,10 @@ public class VorbisAudioFileReader extends TAudioFileReader {
             }
         }
         affProperties.put("ogg.comment.encodedby", new String(_comment.vendor, 0, _comment.vendor.length - 1));
+    }
+
+    private static boolean tagMatches(final String currComment, final String title) {
+        return currComment.toLowerCase().startsWith(title + "=");
     }
 
     /**
