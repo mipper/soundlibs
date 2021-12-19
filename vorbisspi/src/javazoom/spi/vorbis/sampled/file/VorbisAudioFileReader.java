@@ -61,6 +61,7 @@ public class VorbisAudioFileReader extends TAudioFileReader {
     private static final int BUFFER_SIZE = 4096;
     private static final int INITIAL_READ_LENGTH = 128_000 * 32;
     private static final int MARK_LIMIT = INITIAL_READ_LENGTH + 1;
+    private final Map<String, String> _tagMapping;
 
     private SyncState _syncState;
     private StreamState _streamState;
@@ -74,6 +75,9 @@ public class VorbisAudioFileReader extends TAudioFileReader {
 
     public VorbisAudioFileReader() {
         super(MARK_LIMIT, true);
+        _tagMapping = new HashMap<>();
+        _tagMapping.put("genre", "ogg.comment.genre");
+        _tagMapping.put("tracknumber", "ogg.comment.track");
     }
 
     /**
@@ -361,48 +365,27 @@ public class VorbisAudioFileReader extends TAudioFileReader {
             _syncState.wrote(_bytes);
         }
         // Read Ogg Vorbis comments.
+        readTags(affProperties);
+    }
+
+    private void readTags(final Map<String, Object> affProperties) {
         final byte[][] ptr = _comment.user_comments;
         String currComment = "";
-        int c = 0;
         for (final byte[] bytes : ptr) {
-            if (bytes == null) {
-                break;
-            }
-            currComment = (new String(bytes, 0, bytes.length - 1, StandardCharsets.UTF_8)).trim();
-            _logger.debug("Current Comment: {}", currComment);
-            if (tagMatches(currComment, "artist")) {
-                affProperties.put("author", currComment.substring(7));
-            }
-            else if (tagMatches(currComment, "title")) {
-                affProperties.put("title", currComment.substring(6));
-            }
-            else if (tagMatches(currComment, "albumartist")) {
-                affProperties.put("albumartist", currComment.substring(12));
-            }
-            else if (tagMatches(currComment, "album")) {
-                affProperties.put("album", currComment.substring(6));
-            }
-            else if (tagMatches(currComment, "date")) {
-                affProperties.put("date", currComment.substring(5));
-            }
-            else if (tagMatches(currComment, "copyright")) {
-                affProperties.put("copyright", currComment.substring(10));
-            }
-            else if (tagMatches(currComment, "comment")) {
-                affProperties.put("comment", currComment.substring(8));
-            }
-            else if (tagMatches(currComment, "genre")) {
-                affProperties.put("ogg.comment.genre", currComment.substring(6));
-            }
-            else if (tagMatches(currComment, "tracknumber")) {
-                affProperties.put("ogg.comment.track", currComment.substring(12));
-            }
-            else {
-                c++;
-                affProperties.put("ogg.comment.ext." + c, currComment);
+            if (bytes != null) {
+                currComment = (new String(bytes, 0, bytes.length - 1, StandardCharsets.UTF_8)).trim();
+                _logger.debug("Current Comment: {}", currComment);
+                final String[] strs = currComment.split("=", 2);
+                if (strs.length == 2) {
+                    final String key = strs[0].toLowerCase();
+                    final String mappedKey = _tagMapping.get(key);
+                    affProperties.put(mappedKey != null && !mappedKey.isBlank() ? mappedKey : key, strs[1]);
+                }
             }
         }
-        affProperties.put("ogg.comment.encodedby", new String(_comment.vendor, 0, _comment.vendor.length - 1));
+        affProperties.put(
+                "ogg.comment.encodedby",
+                new String(_comment.vendor, 0, _comment.vendor.length - 1, StandardCharsets.UTF_8));
     }
 
     private static boolean tagMatches(final String currComment, final String title) {
