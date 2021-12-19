@@ -404,9 +404,9 @@ public class MpegAudioFileReader extends TAudioFileReader {
             props.put("title", titlev1);
         }
         final String artistv1 = chopSubstring(tag, start, start += 30);
-        final String artistv2 = (String) props.get("author");
+        final String artistv2 = (String) props.get("artist");
         if ((artistv2 == null || artistv2.isEmpty()) && artistv1 != null) {
-            props.put("author", artistv1);
+            props.put("artist", artistv1);
         }
         final String albumv1 = chopSubstring(tag, start, start += 30);
         final String albumv2 = (String) props.get("album");
@@ -521,7 +521,7 @@ public class MpegAudioFileReader extends TAudioFileReader {
                                 props.put("date", value);
                             }
                             else if (code.equals("TPE1")) {
-                                props.put("author", value);
+                                props.put("artist", value);
                             }
                             else if (code.equals("TCOP")) {
                                 props.put("copyright", value);
@@ -596,7 +596,7 @@ public class MpegAudioFileReader extends TAudioFileReader {
                                 props.put("date", value);
                             }
                             else if (scode.equals("TP1")) {
-                                props.put("author", value);
+                                props.put("artist", value);
                             }
                             else if (scode.equals("TCR")) {
                                 props.put("copyright", value);
