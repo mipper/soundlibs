@@ -22,7 +22,7 @@ import org.tritonus.share.sampled.file.TAudioFileFormat;
  * PropertiesContainer unit test.
  * It matches test.ogg properties to test.ogg.properties expected results.
  * As we don't ship test.ogg, you have to generate your own test.ogg.properties
- * Uncomment out = System.out; in setUp() method to generated it on stdout from 
+ * Uncomment out = System.out; in setUp() method to generated it on stdout from
  * your own Ogg Vorbis file.
  */
 public class PropertiesTest extends TestCase
@@ -55,10 +55,10 @@ public class PropertiesTest extends TestCase
 		basefile = (String) props.getProperty("basefile");
 		baseurl = (String) props.getProperty("baseurl");
 		name = (String) props.getProperty("filename");
-		filename = basefile + name;	
+		filename = basefile + name;
         String stream = (String) props.getProperty("stream");
         if (stream != null) fileurl = stream;
-        else fileurl = baseurl + name; 			
+        else fileurl = baseurl + name;
 		out = System.out;
 	}
 
@@ -69,18 +69,18 @@ public class PropertiesTest extends TestCase
 	{
 		super.tearDown();
 	}
-	
+
 	public void testPropertiesFile()
 	{
-		String[] testPropsAFF = {"duration","title","author","album","date","comment",
+		String[] testPropsAFF = {"duration","title","artist","album","date","comment",
 							  "copyright","ogg.bitrate.min","ogg.bitrate.nominal","ogg.bitrate.max"};
 		String[] testPropsAF = {"vbr", "bitrate"};
-		
+
 		File file = new File(filename);
 		AudioFileFormat baseFileFormat = null;
 		AudioFormat baseFormat = null;
 		try
-		{		
+		{
 			baseFileFormat = AudioSystem.getAudioFileFormat(file);
 			baseFormat = baseFileFormat.getFormat();
 			if (out != null) out.println("-> Filename : "+filename+" <-");
@@ -105,7 +105,7 @@ public class PropertiesTest extends TestCase
 			{
 				assertTrue("testPropertiesFile : TAudioFileFormat expected",false);
 			}
-			
+
 			if (baseFormat instanceof TAudioFormat)
 			{
 				Map properties = ((TAudioFormat)baseFormat).properties();
@@ -117,14 +117,14 @@ public class PropertiesTest extends TestCase
 						String val = (properties.get(key)).toString();
 						if (out != null)  out.println(key+"="+val);
 						String valexpected = props.getProperty(key);
-						//assertEquals(key,valexpected,val);						
+						//assertEquals(key,valexpected,val);
 					}
 				}
 			}
 			else
 			{
 				assertTrue("testPropertiesFile : TAudioFormat expected",false);
-			}			
+			}
 		}
 		catch (UnsupportedAudioFileException e)
 		{
@@ -138,13 +138,13 @@ public class PropertiesTest extends TestCase
 
 	public void testPropertiesURL()
 	{
-		String[] testPropsAFF = {"duration","title","author","album","date","comment",
+		String[] testPropsAFF = {"duration","title","artist","album","date","comment",
 							  "copyright","ogg.bitrate.min","ogg.bitrate.nominal","ogg.bitrate.max"};
 		String[] testPropsAF = {"vbr", "bitrate"};
 		AudioFileFormat baseFileFormat = null;
 		AudioFormat baseFormat = null;
 		try
-		{		
+		{
 			URL url = new URL(fileurl);
 			baseFileFormat = AudioSystem.getAudioFileFormat(url);
 			baseFormat = baseFileFormat.getFormat();
@@ -162,7 +162,7 @@ public class PropertiesTest extends TestCase
 						String val = (properties.get(key)).toString();
 						//if (out != null)  out.println(key+"="+val);
 						String valexpected = props.getProperty(key);
-						//assertEquals(key,valexpected,val);						
+						//assertEquals(key,valexpected,val);
 					}
 				}
 			}
@@ -181,14 +181,14 @@ public class PropertiesTest extends TestCase
 						String val = (properties.get(key)).toString();
 						if (out != null)  out.println(key+"="+val);
 						String valexpected = props.getProperty(key);
-						//assertEquals(key,valexpected,val);						
+						//assertEquals(key,valexpected,val);
 					}
 				}
 			}
 			else
 			{
 				assertTrue("testPropertiesURL : TAudioFormat expected",false);
-			}			
+			}
 		}
 		catch (UnsupportedAudioFileException e)
 		{

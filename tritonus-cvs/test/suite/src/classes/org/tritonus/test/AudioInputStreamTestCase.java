@@ -93,7 +93,7 @@ extends TestCase
 // 		Map propReturn = format.properties();
 // 		try
 // 		{
-// 			propReturn.put("author", "Matthias Pfisterer");
+// 			propReturn.put("artist", "Matthias Pfisterer");
 // 			fail("returned Map allows modifications");
 // 		}
 // 		catch (UnsupportedOperationException e)
@@ -106,13 +106,13 @@ extends TestCase
 // 	{
 // 		Map prop = new HashMap();
 // 		prop.put("bitrate", new Float(22.5F));
-// 		prop.put("author", "Matthias Pfisterer");
+// 		prop.put("artist", "Matthias Pfisterer");
 // 		AudioInputStream format = new AudioInputStream(AudioFormat.Encoding.PCM_SIGNED,
 // 											   44100.0F, 16, 2, 4, 44100.0F,
 // 											   true, prop);
 // 		Map propReturn = format.properties();
 // 		assertEquals(new Float(22.5F), propReturn.get("bitrate"));
-// 		assertEquals("Matthias Pfisterer", propReturn.get("author"));
+// 		assertEquals("Matthias Pfisterer", propReturn.get("artist"));
 // 	}
 }
 

@@ -83,7 +83,7 @@ extends TestCase
 		Map<String, Object> propReturn = fileFormat.properties();
 		try
 		{
-			propReturn.put("author", "Matthias Pfisterer");
+			propReturn.put("artist", "Matthias Pfisterer");
 			fail("returned Map allows modifications");
 		}
 		catch (UnsupportedOperationException e)
@@ -96,14 +96,14 @@ extends TestCase
 	{
 		Map<String, Object> prop = new HashMap<String, Object>();
 		prop.put("bitrate", new Float(22.5F));
-		prop.put("author", "Matthias Pfisterer");
+		prop.put("artist", "Matthias Pfisterer");
 		TAudioInputStream fileFormat = new TAudioInputStream(
 			null, null,
 			AudioSystem.NOT_SPECIFIED,
 			prop);
 		Map propReturn = fileFormat.properties();
 		assertEquals(new Float(22.5F), propReturn.get("bitrate"));
-		assertEquals("Matthias Pfisterer", propReturn.get("author"));
+		assertEquals("Matthias Pfisterer", propReturn.get("artist"));
 	}
 }
 

@@ -71,7 +71,7 @@ public class PropertiesTest extends TestCase
 
 	public void testPropertiesFile()
 	{
-		String[] testPropsAFF = {"duration","title","author","album","date","comment",
+		String[] testPropsAFF = {"duration","title","artist","album","date","comment",
                               "copyright","mp3.framerate.fps","mp3.copyright","mp3.padding",
                               "mp3.original","mp3.length.bytes","mp3.frequency.hz",
                               "mp3.length.frames","mp3.mode","mp3.channels","mp3.version.mpeg",
@@ -137,7 +137,7 @@ public class PropertiesTest extends TestCase
 
 	public void testPropertiesURL()
 	{
-		String[] testPropsAFF = {/*"duration",*/"title","author","album","date","comment",
+		String[] testPropsAFF = {/*"duration",*/"title","artist","album","date","comment",
 							  "copyright","mp3.framerate.fps","mp3.copyright","mp3.padding",
 							  "mp3.original",/*"mp3.length.bytes",*/"mp3.frequency.hz",
 							  /*"mp3.length.frames",*/"mp3.mode","mp3.channels","mp3.version.mpeg",
