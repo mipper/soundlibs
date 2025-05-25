@@ -92,7 +92,7 @@
                 <plugin>
                     <groupId>com.github.danielflower.mavenplugins</groupId>
                     <artifactId>multi-module-maven-release-plugin</artifactId>
-                    <version>2.2.0</version>
+                    <version>3.8.0</version>
                     <!-- Using SNAPSHOT for this release, as I applied pull requests #34 and #35.
                     https://github.com/danielflower/multi-module-maven-release-plugin/pulls?q=is%3Apr%20author%3Apdudits
                     -->
