@@ -4,11 +4,11 @@
     <parent>
         <artifactId>soundlibs</artifactId>
         <groupId>com.googlecode.soundlibs</groupId>
-        <version>1-SNAPSHOT</version>
+        <version>1.0.0-SNAPSHOT</version>
     </parent>
 
     <artifactId>vorbisspi</artifactId>
-    <version>1.0.3-SNAPSHOT</version>
+    <version>1.0.4-SNAPSHOT</version>
     <packaging>bundle</packaging>
     <name>VorbisSPI</name>
     <description>Maven artifact for VorbisSPI library. http://www.javazoom.net/vorbisspi/vorbisspi.html</description>
