@@ -8,7 +8,7 @@
     </parent-->
     <groupId>com.googlecode.soundlibs</groupId>
     <artifactId>soundlibs</artifactId>
-    <version>1.0.0</version>
+    <version>1.0.1-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <name>soundlibs: Open source java libraries repackaged</name>
@@ -49,7 +49,7 @@
         <url>https://github.com/mipper/soundlibs</url>
         <connection>scm:git:git@github.com:mipper/soundlibs.git</connection>
         <developerConnection>scm:git:git@github.com:mipper/soundlibs.git</developerConnection>
-        <tag>soundlibs-1.0.0</tag>
+        <tag>HEAD</tag>
     </scm>
 
     <modules>
