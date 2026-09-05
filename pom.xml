@@ -67,27 +67,27 @@
             <dependency>
                 <groupId>com.googlecode.soundlibs</groupId>
                 <artifactId>tritonus-share</artifactId>
-                <version>0.3.7-SNAPSHOT</version>
+                <version>0.3.7.4</version>
             </dependency>
             <dependency>
                 <groupId>com.googlecode.soundlibs</groupId>
                 <artifactId>jorbis</artifactId>
-                <version>0.0.17-SNAPSHOT</version>
+                <version>0.0.17.4</version>
             </dependency>
             <dependency>
                 <groupId>com.googlecode.soundlibs</groupId>
                 <artifactId>jlayer</artifactId>
-                <version>1.0.1-SNAPSHOT</version>
+                <version>1.0.1.4</version>
             </dependency>
             <dependency>
                 <groupId>com.googlecode.soundlibs</groupId>
                 <artifactId>mp3spi</artifactId>
-                <version>1.9.5-SNAPSHOT</version>
+                <version>1.9.5.4</version>
             </dependency>
             <dependency>
                 <groupId>org.slf4j</groupId>
                 <artifactId>slf4j-api</artifactId>
-                <version>1.7.12</version>
+                <version>1.7.36</version>
             </dependency>
 
             <dependency>
@@ -104,15 +104,15 @@
             <plugins>
                 <plugin>
                     <artifactId>maven-compiler-plugin</artifactId>
-                    <version>3.14.0</version>
+                    <version>3.16.0</version>
                 </plugin>
                 <plugin>
                     <artifactId>maven-source-plugin</artifactId>
-                    <version>3.3.1</version>
+                    <version>3.4.0</version>
                 </plugin>
                 <plugin>
                     <artifactId>maven-javadoc-plugin</artifactId>
-                    <version>3.11.2</version>
+                    <version>3.12.0</version>
                     <configuration>
                         <links>
                             <link>http://wiki.soundlibs.googlecode.com/hg/tritonus-share/apidocs</link>
@@ -126,14 +126,14 @@
                 <plugin>
                     <groupId>org.apache.felix</groupId>
                     <artifactId>maven-bundle-plugin</artifactId>
-                    <version>6.0.0</version>
+                    <version>6.1.2</version>
                     <inherited>true</inherited>
                     <extensions>true</extensions>
                 </plugin>
                 <plugin>
                     <groupId>com.github.danielflower.mavenplugins</groupId>
                     <artifactId>multi-module-maven-release-plugin</artifactId>
-                    <version>3.8.0</version>
+                    <version>3.8.5</version>
                     <!-- Using SNAPSHOT for this release, as I applied pull requests #34 and #35.
                     https://github.com/danielflower/multi-module-maven-release-plugin/pulls?q=is%3Apr%20author%3Apdudits
                     -->
@@ -150,7 +150,7 @@
                 </plugin>
                 <plugin>
                     <artifactId>maven-release-plugin</artifactId>
-                    <version>3.1.1</version>
+                    <version>3.3.1</version>
                     <configuration>
                         <pushChanges>false</pushChanges>
                         <localCheckout>true</localCheckout>
@@ -177,7 +177,7 @@
                     <plugin>
                         <groupId>org.apache.maven.plugins</groupId>
                         <artifactId>maven-gpg-plugin</artifactId>
-                        <version>3.2.7</version>
+                        <version>3.2.8</version>
                         <executions>
                             <execution>
                                 <id>sign-artifacts</id>
